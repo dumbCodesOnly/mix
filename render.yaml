@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: ai-platform-backend
+    runtime: python
+    pythonVersion: 3.11
+    
+    # Build configuration
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    
+    # Environment variables
+    envVars:
+      - key: HF_API_KEY
+        scope: build,runtime
+        sync: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: $PORT
+      - key: DEBUG
+        value: "false"
+      - key: ALLOWED_ORIGINS
+        value: "https://yourdomain.com"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_FORMAT
+        value: json
+      - key: REQUEST_TIMEOUT
+        value: "300"
+      - key: MAX_RETRIES
+        value: "3"
+      - key: RETRY_BACKOFF_MULTIPLIER
+        value: "2.0"
+      - key: INITIAL_RETRY_DELAY
+        value: "1.0"
+      - key: MAX_RETRY_DELAY
+        value: "30.0"
+      - key: MAX_IMAGE_SIZE
+        value: "10485760"
+      - key: IMAGE_RESIZE_THRESHOLD
+        value: "1024"
+      - key: IMAGE_QUALITY
+        value: "85"
+      - key: MAX_AUDIO_SIZE
+        value: "52428800"
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Disk size (needed for model caching)
+    disk:
+      name: model-cache
+      mountPath: /root/.cache
+      sizeGB: 20
