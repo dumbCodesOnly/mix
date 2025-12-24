@@ -1,0 +1,14 @@
+services:
+  - type: static_site
+    name: ai-platform-frontend
+    plan: free
+    staticPublishPath: ./dist/public
+    buildCommand: pnpm install && pnpm build
+    envVars:
+      - key: VITE_API_URL
+        scope: build
+        value: https://your-backend-url.onrender.com
+    routes:
+      - path: /*
+        destination: /index.html
+        type: rewrite
