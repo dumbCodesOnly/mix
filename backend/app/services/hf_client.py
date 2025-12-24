@@ -471,6 +471,11 @@ class HuggingFaceClient:
         except Exception as e:
             logger.error(f"Error generating image-to-video with model {model}: {str(e)}")
             raise HuggingFaceAPIError(f"Failed to generate image-to-video: {str(e)}")
+    @retry()
+    def feature_extraction(
+        self,
+        text: str,
+        model: str = Config.DEFAULT_EMBEDDING_MODEL,
     ) -> list[float]:
         """
         logger.debug(f"Entering feature_extraction with model: {model}")

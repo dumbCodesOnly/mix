@@ -27,11 +27,11 @@ class STTResponse(BaseModel):
 
 @router.post("/stt", response_model=STTResponse)
 async def speech_to_text(
-    logger.debug(f"Received request for STT with model: {model}")
     audio: UploadFile = File(...),
     model: str | None = Form(None),
     language: str | None = Form(None),
 ):
+    logger.debug(f"Received request for STT with model: {model}")
     """
     Convert speech to text.
     
