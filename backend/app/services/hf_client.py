@@ -18,6 +18,29 @@ from app.utils.exceptions import HuggingFaceAPIError, ModelNotFoundError, Timeou
 from app.utils.logging import get_logger
 from app.utils.retry import retry
 
+# Mapping of models that require a specific provider
+# Based on HuggingFace Inference API documentation for specific models
+MODEL_PROVIDER_MAP = {
+    # Video Models (Require 'novita' provider)
+    "Wan-AI/Wan2.1-T2V-14B": "novita",
+    "Wan-AI/Wan2.2-TI2V-5B": "novita",
+    "Wan-AI/Wan2.2-T2V-A14B": "novita",
+    "tencent/HunyuanVideo-1.5": "novita",
+    "meituan-longcat/LongCat-Video": "novita", # Based on similar model type and provider pattern
+
+    # TTS Models (Require 'fal' provider)
+    "hexgrad/Kokoro-82M": "fal",
+    "microsoft/VibeVoice-Realtime-0.5B": "fal", # Based on similar model type and provider pattern
+    "ResembleAI/chatterbox": "fal", # Based on similar model type and provider pattern
+
+    # Image Models (Require 'fal' provider)
+    "black-forest-labs/FLUX.1-dev": "fal",
+}
+
+def get_provider_for_model(model: str) -> Optional[str]:
+    """Returns the required provider for a given model, or None if not required."""
+    return MODEL_PROVIDER_MAP.get(model)
+
 logger = get_logger(__name__)
 
 
@@ -58,6 +81,7 @@ class HuggingFaceClient:
         guidance_scale: float = 7.5,
     ) -> bytes:
         """
+        logger.debug(f"Entering text_to_image with model: {model}")
         Generate an image from a text prompt.
         
         Args:
@@ -90,6 +114,7 @@ class HuggingFaceClient:
                 width=width,
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
+                provider=get_provider_for_model(model),
             )
             
             # Convert PIL Image to bytes
@@ -98,7 +123,7 @@ class HuggingFaceClient:
             image.save(image_bytes, format="PNG")
             image_bytes.seek(0)
             
-            logger.info(f"Image generated successfully with model {model}")
+            logger.debug(f"Exiting text_to_image successfully with model {model}")
             return image_bytes.getvalue()
         
         except TimeoutError as e:
@@ -121,6 +146,7 @@ class HuggingFaceClient:
         guidance_scale: float = 7.5,
     ) -> bytes:
         """
+        logger.debug(f"Entering image_to_image with model: {model}")
         Transform an image based on a text prompt.
         
         Args:
@@ -153,6 +179,7 @@ class HuggingFaceClient:
                 strength=strength,
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
+                provider=get_provider_for_model(model),
             )
             
             # Convert PIL Image to bytes
@@ -161,7 +188,7 @@ class HuggingFaceClient:
             result.save(image_bytes, format="PNG")
             image_bytes.seek(0)
             
-            logger.info(f"Image transformed successfully with model {model}")
+            logger.debug(f"Exiting image_to_image successfully with model {model}")
             return image_bytes.getvalue()
         
         except TimeoutError as e:
@@ -178,12 +205,13 @@ class HuggingFaceClient:
         image: Any,
         mask: Any,
         prompt: str,
-        model: str = Config.DEFAULT_IMAGE_EDIT_MODEL,
+         model: str = Config.DEFAULT_EMBEDDING_MODEL,
         negative_prompt: Optional[str] = None,
         num_inference_steps: int = 50,
         guidance_scale: float = 7.5,
     ) -> bytes:
         """
+        logger.debug(f"Entering inpainting with model: {model}")
         Perform image inpainting (editing with mask).
         
         Args:
@@ -216,6 +244,7 @@ class HuggingFaceClient:
                 negative_prompt=negative_prompt,
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
+                provider=get_provider_for_model(model),
             )
             
             # Convert PIL Image to bytes
@@ -224,7 +253,7 @@ class HuggingFaceClient:
             result.save(image_bytes, format="PNG")
             image_bytes.seek(0)
             
-            logger.info(f"Image inpainted successfully with model {model}")
+            logger.debug(f"Exiting inpainting successfully with model {model}")
             return image_bytes.getvalue()
         
         except TimeoutError as e:
@@ -243,6 +272,7 @@ class HuggingFaceClient:
         speaker_id: int = 0,
     ) -> bytes:
         """
+        logger.debug(f"Entering text_to_speech with model: {model}")
         Convert text to speech.
         
         Args:
@@ -263,12 +293,18 @@ class HuggingFaceClient:
                 extra={"text": text[:100], "model": model}
             )
             
+            provider = get_provider_for_model(model)
+            logger.info(
+                f"Converting text to speech with model {model} (Provider: {provider})",
+                extra={"text": text[:100], "model": model, "provider": provider}
+            )
             audio = self.client.text_to_speech(
                 text=text,
                 model=model,
+                provider=provider,
             )
             
-            logger.info(f"Text converted to speech successfully with model {model}")
+            logger.debug(f"Exiting text_to_speech successfully with model {model}")
             return audio
         
         except TimeoutError as e:
@@ -286,6 +322,7 @@ class HuggingFaceClient:
         model: str = Config.DEFAULT_STT_MODEL,
     ) -> dict[str, Any]:
         """
+        logger.debug(f"Entering automatic_speech_recognition with model: {model}")
         Convert speech to text.
         
         Args:
@@ -310,7 +347,7 @@ class HuggingFaceClient:
                 model=model,
             )
             
-            logger.info(f"Speech converted to text successfully with model {model}")
+            logger.debug(f"Exiting automatic_speech_recognition successfully with model {model}")
             return result
         
         except TimeoutError as e:
@@ -322,66 +359,121 @@ class HuggingFaceClient:
             raise HuggingFaceAPIError(f"Failed to convert speech to text: {str(e)}")
     
     @retry()
-    def text_generation(
+    def text_to_video(
         self,
         prompt: str,
-        model: str = Config.DEFAULT_LLM_MODEL,
-        max_new_tokens: int = 256,
-        temperature: float = 0.7,
-        top_p: float = 0.9,
-        top_k: int = 50,
-    ) -> str:
+        model: str = Config.DEFAULT_TEXT_TO_VIDEO_MODEL,
+        negative_prompt: Optional[str] = None,
+        duration: int = 8,
+        fps: int = 24,
+        num_inference_steps: int = 50,
+    ) -> bytes:
         """
-        Generate text using a language model.
+        logger.debug(f"Entering text_to_video with model: {model}")
+        Generate a video from a text prompt.
         
         Args:
-            prompt: Input prompt for text generation
+            prompt: Text description of the video to generate
             model: Model to use for generation
-            max_new_tokens: Maximum number of tokens to generate
-            temperature: Temperature for sampling
-            top_p: Top-p sampling parameter
-            top_k: Top-k sampling parameter
+            negative_prompt: Text to exclude from generation
+            duration: Video duration in seconds
+            fps: Frames per second
+            num_inference_steps: Number of inference steps
             
         Returns:
-            str: Generated text
+            bytes: Generated video as MP4 binary data
             
         Raises:
             HuggingFaceAPIError: If the API call fails
             TimeoutError: If the request times out
         """
+        provider = get_provider_for_model(model)
         try:
             logger.info(
-                f"Generating text with model {model}",
-                extra={"prompt": prompt[:100], "model": model}
+                f"Generating text-to-video with model {model} (Provider: {provider})",
+                extra={"prompt": prompt[:100], "model": model, "provider": provider}
             )
             
-            result = self.client.text_generation(
+            video = self.client.text_to_video(
                 prompt=prompt,
                 model=model,
-                max_new_tokens=max_new_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                top_k=top_k,
+                negative_prompt=negative_prompt,
+                duration=duration,
+                fps=fps,
+                num_inference_steps=num_inference_steps,
+                provider=provider, # Pass the provider if required
             )
             
-            logger.info(f"Text generated successfully with model {model}")
-            return result
+            logger.debug(f"Exiting video generation successfully with model {model}")
+            return video
         
         except TimeoutError as e:
-            logger.error(f"Timeout generating text with model {model}: {str(e)}")
-            raise TimeoutError(f"Text generation timed out: {str(e)}", Config.REQUEST_TIMEOUT)
+            logger.error(f"Timeout generating text-to-video with model {model}: {str(e)}")
+            raise TimeoutError(f"Text-to-video timed out: {str(e)}", Config.REQUEST_TIMEOUT)
         
         except Exception as e:
-            logger.error(f"Error generating text with model {model}: {str(e)}")
-            raise HuggingFaceAPIError(f"Failed to generate text: {str(e)}")
-    
+            logger.error(f"Error generating text-to-video with model {model}: {str(e)}")
+            raise HuggingFaceAPIError(f"Failed to generate text-to-video: {str(e)}")
+
     @retry()
-    def feature_extraction(
+    def image_to_video(
         self,
-        text: str,
-        model: str = Config.DEFAULT_EMBEDDING_MODEL,
+        image: bytes,
+        model: str = Config.DEFAULT_IMAGE_TO_VIDEO_MODEL,
+        prompt: Optional[str] = None,
+        duration: int = 6,
+        fps: int = 24,
+        num_inference_steps: int = 50,
+    ) -> bytes:
+        """
+        logger.debug(f"Entering image_to_video with model: {model}")
+        Generate a video from an image.
+        
+        Args:
+            image: Image bytes (PNG, JPG, etc.)
+            model: Model to use for generation
+            prompt: Optional text prompt for video style
+            duration: Video duration in seconds
+            fps: Frames per second
+            num_inference_steps: Number of inference steps
+            
+        Returns:
+            bytes: Generated video as MP4 binary data
+            
+        Raises:
+            HuggingFaceAPIError: If the API call fails
+            TimeoutError: If the request times out
+        """
+        provider = get_provider_for_model(model)
+        try:
+            logger.info(
+                f"Generating image-to-video with model {model} (Provider: {provider})",
+                extra={"image_size": len(image), "model": model, "provider": provider}
+            )
+            
+            video = self.client.image_to_video(
+                image=image,
+                model=model,
+                prompt=prompt,
+                duration=duration,
+                fps=fps,
+                num_inference_steps=num_inference_steps,
+                provider=provider, # Pass the provider if required
+            )
+            
+            logger.debug(f"Exiting video generation successfully with model {model}")
+            return video
+        
+        except TimeoutError as e:
+            logger.error(f"Timeout generating image-to-video with model {model}: {str(e)}")
+            raise TimeoutError(f"Image-to-video timed out: {str(e)}", Config.REQUEST_TIMEOUT)
+        
+        except Exception as e:
+            logger.error(f"Error generating image-to-video with model {model}: {str(e)}")
+            raise HuggingFaceAPIError(f"Failed to generate image-to-video: {str(e)}")
     ) -> list[float]:
         """
+        logger.debug(f"Entering feature_extraction with model: {model}")
         Generate embeddings for text.
         
         Args:
@@ -406,7 +498,7 @@ class HuggingFaceClient:
                 model=model,
             )
             
-            logger.info(f"Embeddings generated successfully with model {model}")
+            logger.debug(f"Exiting feature_extraction successfully with model {model}")
             return embedding
         
         except TimeoutError as e:

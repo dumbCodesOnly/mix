@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api", tags=["image"])
 
 @router.post("/image")
 async def generate_image(request: ImageGenerationRequest):
+    logger.debug(f"Received request to generate image for model: {request.model}")
     """
     Generate an image from a text prompt.
     
@@ -45,6 +46,7 @@ async def generate_image(request: ImageGenerationRequest):
             guidance_scale=request.guidance_scale,
         )
         
+        logger.debug(f"Successfully processed request for model: {request.model}")
         return StreamingResponse(
             io.BytesIO(image_bytes),
             media_type="image/png",
@@ -62,6 +64,7 @@ async def generate_image(request: ImageGenerationRequest):
 
 @router.post("/edit-image")
 async def edit_image(request: ImageEditingRequest):
+    logger.debug(f"Received request to edit image for model: {request.model}")
     """
     Edit an image based on a text prompt.
     
@@ -90,6 +93,7 @@ async def edit_image(request: ImageEditingRequest):
             guidance_scale=request.guidance_scale,
         )
         
+        logger.debug(f"Successfully processed request for model: {request.model}")
         return StreamingResponse(
             io.BytesIO(image_bytes),
             media_type="image/png",

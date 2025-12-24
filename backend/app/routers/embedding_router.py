@@ -18,6 +18,7 @@ router = APIRouter(prefix="/api", tags=["embedding"])
 
 @router.post("/embedding", response_model=EmbeddingResponse)
 async def generate_embedding(request: EmbeddingRequest) -> EmbeddingResponse:
+    logger.debug(f"Received request to generate embedding for model: {request.model}")
     """
     Generate embeddings for text.
     
@@ -44,6 +45,7 @@ async def generate_embedding(request: EmbeddingRequest) -> EmbeddingResponse:
             model=result["model"],
             tokens_used=result.get("tokens_used"),
         )
+        logger.debug(f"Successfully generated embedding for model: {request.model}")
     
     except AIServiceException as e:
         logger.error(f"Embedding error: {e.message}")

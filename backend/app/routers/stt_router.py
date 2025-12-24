@@ -27,6 +27,7 @@ class STTResponse(BaseModel):
 
 @router.post("/stt", response_model=STTResponse)
 async def speech_to_text(
+    logger.debug(f"Received request for STT with model: {model}")
     audio: UploadFile = File(...),
     model: str | None = Form(None),
     language: str | None = Form(None),
@@ -71,6 +72,7 @@ async def speech_to_text(
             confidence=result.get("confidence"),
             model=result.get("model", model or Config.DEFAULT_STT_MODEL),
         )
+        logger.debug(f"Successfully transcribed audio with model: {model}")
     
     except AIServiceException as e:
         logger.error(f"STT error: {e.message}")

@@ -18,6 +18,7 @@ router = APIRouter(prefix="/api", tags=["llm"])
 
 @router.post("/llm", response_model=LLMResponse)
 async def generate_text(request: LLMRequest) -> LLMResponse:
+    logger.debug(f"Received request to generate text for model: {request.model}")
     """
     Generate text based on conversation messages.
     
@@ -48,6 +49,7 @@ async def generate_text(request: LLMRequest) -> LLMResponse:
             tokens_used=result.get("tokens_used"),
             stop_reason=result.get("stop_reason"),
         )
+        logger.debug(f"Successfully generated text for model: {request.model}")
     
     except AIServiceException as e:
         logger.error(f"LLM error: {e.message}")

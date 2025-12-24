@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api", tags=["tts"])
 
 @router.post("/tts", response_model=TTSResponse)
 async def text_to_speech(request: TTSRequest):
+    logger.debug(f"Received request for TTS with model: {request.model}")
     """
     Convert text to speech.
     
@@ -43,6 +44,7 @@ async def text_to_speech(request: TTSRequest):
         )
         
         # Return audio as streaming response
+        logger.debug(f"Successfully synthesized speech with model: {request.model}")
         return StreamingResponse(
             io.BytesIO(audio_bytes),
             media_type="audio/wav",
