@@ -30,3 +30,5 @@ mypy==1.7.1
 
 # Production server
 gunicorn==21.2.0
+python-multipart
+python-dotenv
