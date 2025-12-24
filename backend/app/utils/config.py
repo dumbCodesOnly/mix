@@ -88,7 +88,7 @@ class Config:
         "stabilityai/stable-diffusion-xl-inpainting"
     ]
     
-LLM_FALLBACK_MODELS: list[str] = [
+    LLM_FALLBACK_MODELS: list[str] = [
         "meta-llama/Llama-3.1-8B-Instruct",
         "meta-llama/Llama-3.2-3B-Instruct",
         "Qwen/Qwen2.5-7B-Instruct",
