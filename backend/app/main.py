@@ -22,7 +22,6 @@ from app.routers import (
     tts_router,
     video_router,
 )
-)
 from app.utils import AIServiceException, Config, get_logger, setup_logging
 
 # Set up logging
