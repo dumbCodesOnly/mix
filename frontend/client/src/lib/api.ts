@@ -168,6 +168,11 @@ class APIClient {
     return response.data;
   }
 
+  async getModels(): Promise<any> {
+    const response = await this.client.get('/config/models');
+    return response.data;
+  }
+
   async generateTextToVideo(request: VideoTextToVideoRequest): Promise<Blob> {
     const response = await this.client.post('/api/video/text-to-video', request, {
       responseType: 'blob',

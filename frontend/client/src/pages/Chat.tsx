@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,17 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-const models = [
-  { value: 'meta-llama/Llama-3.1-8B-Instruct', label: 'Llama 3.1 8B Instruct' },
-  { value: 'mistralai/Mistral-7B-Instruct-v0.1', label: 'Mistral 7B Instruct' },
-  { value: 'tiiuae/falcon-7b-instruct', label: 'Falcon 7B Instruct' },
-];
+interface ModelOption {
+  value: string;
+  label: string;
+}
+
+// Initial hardcoded list is removed, will be replaced by state
+// const models = [
+//   { value: 'meta-llama/Llama-3.1-8B-Instruct', label: 'Llama 3.1 8B Instruct' },
+//   { value: 'mistralai/Mistral-7B-Instruct-v0.1', label: 'Mistral 7B Instruct' },
+//   { value: 'tiiuae/falcon-7b-instruct', label: 'Falcon 7B Instruct' },
+// ];
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -23,6 +29,7 @@ interface Message {
 }
 
 export default function Chat() {
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'system',
@@ -30,7 +37,7 @@ export default function Chat() {
     },
   ]);
   const [input, setInput] = useState('');
-  const [model, setModel] = useState(models[0].value);
+  const [model, setModel] = useState(''); // Initialize model to empty string
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +46,27 @@ export default function Chat() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Fetch models dynamically
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await apiClient.getModels();
+        const llmModels = response.llm.map((m: string) => ({
+          value: m,
+          label: m.split('/').pop() || m, // Simple label generation
+        }));
+        setAvailableModels(llmModels);
+        if (llmModels.length > 0) {
+          setModel(llmModels[0].value); // Set default model
+        }
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+        toast.error('Failed to load available models from server.');
+      }
+    };
+    fetchModels();
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim()) {
@@ -123,12 +151,12 @@ export default function Chat() {
                   <CardDescription>Chat with AI language models</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Select value={model} onValueChange={setModel}>
+                  <Select value={model} onValueChange={setModel} disabled={availableModels.length === 0}>
                     <SelectTrigger className="w-[240px]">
-                      <SelectValue />
+                      <SelectValue placeholder="Select Model" />
                     </SelectTrigger>
                     <SelectContent>
-                      {models.map((m) => (
+                      {availableModels.map((m) => (
                         <SelectItem key={m.value} value={m.value}>
                           {m.label}
                         </SelectItem>

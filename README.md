@@ -30,6 +30,7 @@ A production-ready FastAPI service for multiple HuggingFace AI models, providing
         tts_router.py
         stt_router.py
         llm_router.py
+        config_router.py
         embedding_router.py
     services/             # Business logic layer
         hf_client.py      # HuggingFace API wrapper
@@ -398,6 +399,9 @@ All errors follow a consistent JSON format:
 | `invalid_format_error` | 400 | Invalid file format |
 
 ## Configuration
+\n### Dynamic Model Configuration
+\nModel lists for the frontend (LLM, Image Generation, etc.) are now fetched dynamically from the backend via the `GET /config/models` endpoint. This ensures that the frontend always uses the models configured in the backend's `config.py` file, preventing hardcoding errors and deprecated model usage.
+\n\n### Key Configuration Variables
 
 Configuration is managed through environment variables. See `.env.example` for all available options.
 

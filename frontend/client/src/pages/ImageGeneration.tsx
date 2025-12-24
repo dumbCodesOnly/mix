@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,22 +11,50 @@ import { Loader2, Download, Sparkles, Image as ImageIcon } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { apiClient, downloadBlob } from '@/lib/api';
 
-const models = [
-  { value: 'stabilityai/stable-diffusion-3.5-large', label: 'Stable Diffusion 3.5 Large' },
-  { value: 'black-forest-labs/FLUX.1-dev', label: 'FLUX.1 Dev' },
-  { value: 'runwayml/stable-diffusion-v1-5', label: 'Stable Diffusion v1.5' },
-];
+interface ModelOption {
+  value: string;
+  label: string;
+}
+
+// Initial hardcoded list is removed, will be replaced by state
+// const models = [
+//   { value: 'stabilityai/stable-diffusion-3.5-large', label: 'Stable Diffusion 3.5 Large' },
+//   { value: 'black-forest-labs/FLUX.1-dev', label: 'FLUX.1 Dev' },
+//   { value: 'runwayml/stable-diffusion-v1-5', label: 'Stable Diffusion v1.5' },
+// ];
 
 export default function ImageGeneration() {
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [prompt, setPrompt] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
-  const [model, setModel] = useState(models[0].value);
+  const [model, setModel] = useState(''); // Initialize model to empty string
   const [width, setWidth] = useState(512);
   const [height, setHeight] = useState(512);
   const [steps, setSteps] = useState(50);
   const [guidanceScale, setGuidanceScale] = useState(7.5);
   const [loading, setLoading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+
+  // Fetch models dynamically
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await apiClient.getModels();
+        const imageModels = response.image.map((m: string) => ({
+          value: m,
+          label: m.split('/').pop() || m, // Simple label generation
+        }));
+        setAvailableModels(imageModels);
+        if (imageModels.length > 0) {
+          setModel(imageModels[0].value); // Set default model
+        }
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+        toast.error('Failed to load available models from server.');
+      }
+    };
+    fetchModels();
+  }, []);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -118,22 +146,22 @@ export default function ImageGeneration() {
                 />
               </div>
 
-              {/* Model Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="model">Model</Label>
-                <Select value={model} onValueChange={setModel}>
-                  <SelectTrigger id="model">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+	              {/* Model Selection */}
+	              <div className="space-y-2">
+	                <Label htmlFor="model">Model</Label>
+	                <Select value={model} onValueChange={setModel} disabled={availableModels.length === 0}>
+	                  <SelectTrigger id="model">
+	                    <SelectValue placeholder="Select Model" />
+	                  </SelectTrigger>
+	                  <SelectContent>
+	                    {availableModels.map((m) => (
+	                      <SelectItem key={m.value} value={m.value}>
+	                        {m.label}
+	                      </SelectItem>
+	                    ))}
+	                  </SelectContent>
+	                </Select>
+	              </div>
 
               {/* Dimensions */}
               <div className="grid grid-cols-2 gap-4">

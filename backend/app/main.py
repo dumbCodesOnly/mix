@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.routers import (
+    config_router,
     embedding_router,
     health_router,
     image_router,
@@ -20,6 +21,7 @@ from app.routers import (
     stt_router,
     tts_router,
     video_router,
+)
 )
 from app.utils import AIServiceException, Config, get_logger, setup_logging
 
@@ -114,6 +116,7 @@ app.include_router(stt_router.router)
 app.include_router(llm_router.router)
 app.include_router(embedding_router.router)
 app.include_router(video_router.router)
+app.include_router(config_router.router)
 
 
 # Root endpoint
