@@ -91,7 +91,11 @@ class LLMService:
     @staticmethod
     def _build_prompt(messages: list[Message]) -> str:
         """
-        Build a prompt string from conversation messages.
+        Build a prompt string from conversation messages using a simple chat template.
+        
+        Note: For Llama 3.1, the official chat template should be used for best results,
+        but a simple turn-based format is used here for compatibility with the Inference API's
+        text_generation method, which expects a single string prompt.
         
         Args:
             messages: List of Message objects
@@ -103,14 +107,15 @@ class LLMService:
         
         for msg in messages:
             if msg.role == "system":
-                prompt_parts.append(f"System: {msg.content}")
+                # System messages are often prepended to the first user message in Llama
+                prompt_parts.append(f"<|system|>\n{msg.content}<|end|>")
             elif msg.role == "user":
-                prompt_parts.append(f"User: {msg.content}")
+                prompt_parts.append(f"<|user|>\n{msg.content}<|end|>")
             elif msg.role == "assistant":
-                prompt_parts.append(f"Assistant: {msg.content}")
+                prompt_parts.append(f"<|assistant|>\n{msg.content}<|end|>")
         
-        # Add final user prompt indicator
-        prompt_parts.append("Assistant:")
+        # Add final assistant turn to prompt the model for a response
+        prompt_parts.append("<|assistant|>")
         
         return "\n".join(prompt_parts)
 

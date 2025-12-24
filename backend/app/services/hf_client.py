@@ -5,10 +5,9 @@ This module provides a centralized interface to the HuggingFace Inference API,
 with support for retry logic, model fallback, and comprehensive error handling.
 """
 
-# CRITICAL: Set the HuggingFace inference endpoint BEFORE importing InferenceClient
-# HuggingFace has deprecated api-inference.huggingface.co and now requires router.huggingface.co
+# The InferenceClient handles model routing automatically.
+# Overriding the endpoint can cause non-LLM tasks to fail.
 import os
-os.environ['HF_INFERENCE_ENDPOINT'] = 'https://router.huggingface.co'
 
 from typing import Any, Optional
 
