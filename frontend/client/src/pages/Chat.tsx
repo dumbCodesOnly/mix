@@ -12,7 +12,7 @@ import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const models = [
-  { value: 'meta-llama/Llama-2-7b-chat-hf', label: 'Llama 2 7B Chat' },
+  { value: 'meta-llama/Llama-3.1-8B-Instruct', label: 'Llama 3.1 8B Instruct' },
   { value: 'mistralai/Mistral-7B-Instruct-v0.1', label: 'Mistral 7B Instruct' },
   { value: 'tiiuae/falcon-7b-instruct', label: 'Falcon 7B Instruct' },
 ];
