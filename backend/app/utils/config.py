@@ -54,29 +54,33 @@ class Config:
     MAX_AUDIO_SIZE: int = int(os.getenv("MAX_AUDIO_SIZE", "52428800"))  # 50MB
     
     # Model Configuration
-    DEFAULT_TTS_MODEL: str = os.getenv("DEFAULT_TTS_MODEL", "espnet/kan-bayashi_ljspeech_vits")
-    DEFAULT_STT_MODEL: str = os.getenv("DEFAULT_STT_MODEL", "openai/whisper-base")
+    DEFAULT_TTS_MODEL: str = os.getenv("DEFAULT_TTS_MODEL", "hexgrad/Kokoro-82M")
+    DEFAULT_STT_MODEL: str = os.getenv("DEFAULT_STT_MODEL", "openai/whisper-large-v3-turbo")
     DEFAULT_IMAGE_MODEL: str = os.getenv("DEFAULT_IMAGE_MODEL", "stabilityai/stable-diffusion-3-medium")
     DEFAULT_IMAGE_EDIT_MODEL: str = os.getenv("DEFAULT_IMAGE_EDIT_MODEL", "stabilityai/stable-diffusion-xl-inpainting")
-    DEFAULT_LLM_MODEL: str = os.getenv("DEFAULT_LLM_MODEL", "mistralai/Mistral-7B-Instruct-v0.1")
+    DEFAULT_LLM_MODEL: str = os.getenv("DEFAULT_LLM_MODEL", "meta-llama/Llama-3.1-8B-Instruct")
     DEFAULT_EMBEDDING_MODEL: str = os.getenv("DEFAULT_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+
+    # Video Model Configuration (Added)
+    DEFAULT_TEXT_TO_VIDEO_MODEL: str = os.getenv("DEFAULT_TEXT_TO_VIDEO_MODEL", "tencent/HunyuanVideo-1.5")
+    DEFAULT_IMAGE_TO_VIDEO_MODEL: str = os.getenv("DEFAULT_IMAGE_TO_VIDEO_MODEL", "Wan-AI/Wan2.2-TI2V-5B")
     
     # Fallback Models
     TTS_FALLBACK_MODELS: list[str] = [
-        "microsoft/speecht5_tts",
-        "espnet/kan-bayashi_ljspeech_vits"
+        "microsoft/VibeVoice-Realtime-0.5B",
+        "ResembleAI/chatterbox"
     ]
     
     STT_FALLBACK_MODELS: list[str] = [
-        "openai/whisper-small",
-        "openai/whisper-base",
-        "openai/whisper-medium"
+        "openai/whisper-large-v3",
+        "openai/whisper-medium",
+        "openai/whisper-base"
     ]
     
     IMAGE_FALLBACK_MODELS: list[str] = [
         "black-forest-labs/FLUX.1-dev",
-        "runwayml/stable-diffusion-v1-5",
-        "stabilityai/stable-diffusion-3-medium"
+        "stabilityai/stable-diffusion-3.5-medium",
+        "stabilityai/stable-diffusion-xl-base-1.0"
     ]
     
     IMAGE_EDIT_FALLBACK_MODELS: list[str] = [
@@ -84,10 +88,21 @@ class Config:
         "stabilityai/stable-diffusion-xl-inpainting"
     ]
     
-    LLM_FALLBACK_MODELS: list[str] = [
+LLM_FALLBACK_MODELS: list[str] = [
+        "meta-llama/Llama-3.1-8B-Instruct",
+        "meta-llama/Llama-3.2-3B-Instruct",
+        "Qwen/Qwen2.5-7B-Instruct",
         "mistralai/Mistral-7B-Instruct-v0.1",
-        "HuggingFaceH4/zephyr-7b-beta",
-        "tiiuae/falcon-7b-instruct"
+        "HuggingFaceTB/SmolLM3-3B"
+    ]
+
+    # Video Fallback Models (Added)
+    TEXT_TO_VIDEO_FALLBACK_MODELS: list[str] = [
+        "meituan-longcat/LongCat-Video",
+        "Wan-AI/Wan2.1-T2V-14B"
+    ]
+    IMAGE_TO_VIDEO_FALLBACK_MODELS: list[str] = [
+        "Wan-AI/Wan2.2-T2V-A14B"
     ]
     
     EMBEDDING_FALLBACK_MODELS: list[str] = [
@@ -140,6 +155,8 @@ class Config:
                 "image_edit": cls.DEFAULT_IMAGE_EDIT_MODEL,
                 "llm": cls.DEFAULT_LLM_MODEL,
                 "embedding": cls.DEFAULT_EMBEDDING_MODEL,
+                "text_to_video": cls.DEFAULT_TEXT_TO_VIDEO_MODEL,
+                "image_to_video": cls.DEFAULT_IMAGE_TO_VIDEO_MODEL,
             }
         }
 
