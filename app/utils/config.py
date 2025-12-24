@@ -6,6 +6,9 @@ providing centralized configuration for the entire application.
 """
 
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 from typing import Optional
 
 

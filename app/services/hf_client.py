@@ -39,7 +39,7 @@ class HuggingFaceClient:
             raise ValueError("HuggingFace API key is required")
         
         self.api_key = api_key
-        self.client = InferenceClient(api_key=api_key)
+        self.client = InferenceClient(token=api_key)
         logger.info("HuggingFace client initialized successfully")
     
     @retry()

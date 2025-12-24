@@ -1,1 +1,294 @@
-\"\"\"Video generation API routers.\n\nProvides endpoints for:\n- Text-to-video generation\n- Image-to-video generation\n\"\"\"\n\nimport base64\nimport time\nfrom typing import Optional\n\nfrom fastapi import APIRouter, File, Form, UploadFile, HTTPException\nfrom fastapi.responses import StreamingResponse\n\nfrom app.services.video_service import get_video_service\nfrom app.utils.validation import (\n    TextToVideoRequest,\n    ImageToVideoRequest,\n    VideoGenerationResponse,\n    ErrorResponse,\n)\nfrom app.utils.exceptions import (\n    ValidationError,\n    HuggingFaceAPIError,\n    ProcessingError,\n    FileSizeError,\n    ModelNotFoundError,\n)\nfrom app.utils.logging import get_logger\n\nlogger = get_logger(__name__)\n\nrouter = APIRouter(prefix=\"/api/video\", tags=[\"video\"])\nvideo_service = get_video_service()\n\n\n@router.post(\n    \"/text-to-video\",\n    response_class=StreamingResponse,\n    responses={\n        200: {\"description\": \"Video generated successfully\"},\n        400: {\"model\": ErrorResponse},\n        422: {\"model\": ErrorResponse},\n        500: {\"model\": ErrorResponse},\n    },\n    summary=\"Generate video from text prompt\",\n    description=\"Generate a video from a text description using HuggingFace models.\",\n)\nasync def text_to_video(\n    request: TextToVideoRequest,\n) -> StreamingResponse:\n    \"\"\"Generate video from text prompt.\n    \n    Args:\n        request: TextToVideoRequest containing:\n            - prompt: Text description of video\n            - model: Optional HuggingFace model ID\n            - negative_prompt: Optional negative prompt\n            - duration: Video duration (1-30 seconds)\n            - fps: Frames per second (1-60)\n            - num_inference_steps: Quality/speed tradeoff (1-100)\n            \n    Returns:\n        StreamingResponse: MP4 video file\n        \n    Raises:\n        HTTPException: If generation fails\n    \"\"\"\n    try:\n        logger.info(\n            \"Text-to-video request received\",\n            extra={\n                \"prompt_length\": len(request.prompt),\n                \"model\": request.model,\n            },\n        )\n\n        # Generate video\n        video_data = await video_service.generate_text_to_video(\n            prompt=request.prompt,\n            model=request.model,\n            negative_prompt=request.negative_prompt,\n            duration=request.duration,\n            fps=request.fps,\n            num_inference_steps=request.num_inference_steps,\n        )\n\n        # Return video as streaming response\n        return StreamingResponse(\n            iter([video_data[\"video_bytes\"]]),\n            media_type=\"video/mp4\",\n            headers={\n                \"Content-Disposition\": 'attachment; filename=\"video.mp4\"',\n                \"X-Video-Model\": video_data[\"model\"],\n                \"X-Generation-Time\": str(video_data[\"generation_time\"]),\n            },\n        )\n\n    except ValidationError as e:\n        logger.warning(f\"Validation error in text-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=422,\n            detail={\n                \"error\": \"validation_error\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except ModelNotFoundError as e:\n        logger.warning(f\"Model not found in text-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=404,\n            detail={\n                \"error\": \"model_not_found\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except FileSizeError as e:\n        logger.warning(f\"File size error in text-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=413,\n            detail={\n                \"error\": \"file_size_error\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except HuggingFaceAPIError as e:\n        logger.error(f\"HuggingFace API error in text-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=502,\n            detail={\n                \"error\": \"huggingface_api_error\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except ProcessingError as e:\n        logger.error(f\"Processing error in text-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=500,\n            detail={\n                \"error\": \"processing_error\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except Exception as e:\n        logger.error(f\"Unexpected error in text-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=500,\n            detail={\n                \"error\": \"internal_server_error\",\n                \"message\": \"An unexpected error occurred\",\n            },\n        )\n\n\n@router.post(\n    \"/image-to-video\",\n    response_class=StreamingResponse,\n    responses={\n        200: {\"description\": \"Video generated successfully\"},\n        400: {\"model\": ErrorResponse},\n        413: {\"model\": ErrorResponse},\n        422: {\"model\": ErrorResponse},\n        500: {\"model\": ErrorResponse},\n    },\n    summary=\"Generate video from image\",\n    description=\"Generate a video from an image using HuggingFace models.\",\n)\nasync def image_to_video(\n    image: UploadFile = File(..., description=\"Input image file\"),\n    model: Optional[str] = Form(\n        None, description=\"HuggingFace model ID\"\n    ),\n    prompt: Optional[str] = Form(\n        None, description=\"Optional text prompt for video style\"\n    ),\n    duration: int = Form(6, ge=1, le=30, description=\"Video duration in seconds\"),\n    fps: int = Form(8, ge=1, le=60, description=\"Frames per second\"),\n    num_inference_steps: int = Form(\n        50, ge=1, le=100, description=\"Inference steps for quality\"\n    ),\n) -> StreamingResponse:\n    \"\"\"Generate video from image.\n    \n    Args:\n        image: Image file (PNG, JPG, WebP)\n        model: Optional HuggingFace model ID\n        prompt: Optional text prompt for video style\n        duration: Video duration (1-30 seconds)\n        fps: Frames per second (1-60)\n        num_inference_steps: Quality/speed tradeoff (1-100)\n            \n    Returns:\n        StreamingResponse: MP4 video file\n        \n    Raises:\n        HTTPException: If generation fails\n    \"\"\"\n    try:\n        # Read image data\n        image_data = await image.read()\n\n        logger.info(\n            \"Image-to-video request received\",\n            extra={\n                \"image_size\": len(image_data),\n                \"model\": model,\n            },\n        )\n\n        # Generate video\n        video_data = await video_service.generate_image_to_video(\n            image_data=image_data,\n            model=model,\n            prompt=prompt,\n            duration=duration,\n            fps=fps,\n            num_inference_steps=num_inference_steps,\n        )\n\n        # Return video as streaming response\n        return StreamingResponse(\n            iter([video_data[\"video_bytes\"]]),\n            media_type=\"video/mp4\",\n            headers={\n                \"Content-Disposition\": 'attachment; filename=\"video.mp4\"',\n                \"X-Video-Model\": video_data[\"model\"],\n                \"X-Generation-Time\": str(video_data[\"generation_time\"]),\n            },\n        )\n\n    except ValidationError as e:\n        logger.warning(f\"Validation error in image-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=422,\n            detail={\n                \"error\": \"validation_error\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except ModelNotFoundError as e:\n        logger.warning(f\"Model not found in image-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=404,\n            detail={\n                \"error\": \"model_not_found\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except FileSizeError as e:\n        logger.warning(f\"File size error in image-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=413,\n            detail={\n                \"error\": \"file_size_error\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except HuggingFaceAPIError as e:\n        logger.error(f\"HuggingFace API error in image-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=502,\n            detail={\n                \"error\": \"huggingface_api_error\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except ProcessingError as e:\n        logger.error(f\"Processing error in image-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=500,\n            detail={\n                \"error\": \"processing_error\",\n                \"message\": str(e),\n                \"details\": e.details,\n            },\n        )\n    except Exception as e:\n        logger.error(f\"Unexpected error in image-to-video: {str(e)}\")\n        raise HTTPException(\n            status_code=500,\n            detail={\n                \"error\": \"internal_server_error\",\n                \"message\": \"An unexpected error occurred\",\n            },\n        )\n
+"""Video generation API routers.
+
+Provides endpoints for:
+- Text-to-video generation
+- Image-to-video generation
+"""
+
+import base64
+import time
+from typing import Optional
+
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException
+from fastapi.responses import StreamingResponse
+
+from app.services.video_service import get_video_service
+from app.utils.validation import (
+    TextToVideoRequest,
+    ImageToVideoRequest,
+    VideoGenerationResponse,
+    ErrorResponse,
+)
+from app.utils.exceptions import (
+    ValidationError,
+    HuggingFaceAPIError,
+    ProcessingError,
+    FileSizeError,
+    ModelNotFoundError,
+)
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
+
+router = APIRouter(prefix="/api/video", tags=["video"])
+video_service = get_video_service()
+
+
+@router.post(
+    "/text-to-video",
+    response_class=StreamingResponse,
+    responses={
+        200: {"description": "Video generated successfully"},
+        400: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+    summary="Generate video from text prompt",
+    description="Generate a video from a text description using HuggingFace models.",
+)
+async def text_to_video(
+    request: TextToVideoRequest,
+) -> StreamingResponse:
+    """Generate video from text prompt.
+    
+    Args:
+        request: TextToVideoRequest containing:
+            - prompt: Text description of video
+            - model: Optional HuggingFace model ID
+            - negative_prompt: Optional negative prompt
+            - duration: Video duration (1-30 seconds)
+            - fps: Frames per second (1-60)
+            - num_inference_steps: Quality/speed tradeoff (1-100)
+            
+    Returns:
+        StreamingResponse: MP4 video file
+        
+    Raises:
+        HTTPException: If generation fails
+    """
+    try:
+        logger.info(
+            "Text-to-video request received",
+            extra={
+                "prompt_length": len(request.prompt),
+                "model": request.model,
+            },
+        )
+
+        # Generate video
+        video_data = await video_service.generate_text_to_video(
+            prompt=request.prompt,
+            model=request.model,
+            negative_prompt=request.negative_prompt,
+            duration=request.duration,
+            fps=request.fps,
+            num_inference_steps=request.num_inference_steps,
+        )
+
+        # Return video as streaming response
+        return StreamingResponse(
+            iter([video_data["video_bytes"]]),
+            media_type="video/mp4",
+            headers={
+                "Content-Disposition": 'attachment; filename="video.mp4"',
+                "X-Video-Model": video_data["model"],
+                "X-Generation-Time": str(video_data["generation_time"]),
+            },
+        )
+
+    except ValidationError as e:
+        logger.warning(f"Validation error in text-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "validation_error",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except ModelNotFoundError as e:
+        logger.warning(f"Model not found in text-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "model_not_found",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except FileSizeError as e:
+        logger.warning(f"File size error in text-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "error": "file_size_error",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except HuggingFaceAPIError as e:
+        logger.error(f"HuggingFace API error in text-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "huggingface_api_error",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except ProcessingError as e:
+        logger.error(f"Processing error in text-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "processing_error",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in text-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "internal_server_error",
+                "message": "An unexpected error occurred",
+            },
+        )
+
+
+@router.post(
+    "/image-to-video",
+    response_class=StreamingResponse,
+    responses={
+        200: {"description": "Video generated successfully"},
+        400: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+    summary="Generate video from image",
+    description="Generate a video from an image using HuggingFace models.",
+)
+async def image_to_video(
+    image: UploadFile = File(..., description="Input image file"),
+    model: Optional[str] = Form(
+        None, description="HuggingFace model ID"
+    ),
+    prompt: Optional[str] = Form(
+        None, description="Optional text prompt for video style"
+    ),
+    duration: int = Form(6, ge=1, le=30, description="Video duration in seconds"),
+    fps: int = Form(8, ge=1, le=60, description="Frames per second"),
+    num_inference_steps: int = Form(
+        50, ge=1, le=100, description="Inference steps for quality"
+    ),
+) -> StreamingResponse:
+    """Generate video from image.
+    
+    Args:
+        image: Image file (PNG, JPG, WebP)
+        model: Optional HuggingFace model ID
+        prompt: Optional text prompt for video style
+        duration: Video duration (1-30 seconds)
+        fps: Frames per second (1-60)
+        num_inference_steps: Quality/speed tradeoff (1-100)
+            
+    Returns:
+        StreamingResponse: MP4 video file
+        
+    Raises:
+        HTTPException: If generation fails
+    """
+    try:
+        # Read image data
+        image_data = await image.read()
+
+        logger.info(
+            "Image-to-video request received",
+            extra={
+                "image_size": len(image_data),
+                "model": model,
+            },
+        )
+
+        # Generate video
+        video_data = await video_service.generate_image_to_video(
+            image_data=image_data,
+            model=model,
+            prompt=prompt,
+            duration=duration,
+            fps=fps,
+            num_inference_steps=num_inference_steps,
+        )
+
+        # Return video as streaming response
+        return StreamingResponse(
+            iter([video_data["video_bytes"]]),
+            media_type="video/mp4",
+            headers={
+                "Content-Disposition": 'attachment; filename="video.mp4"',
+                "X-Video-Model": video_data["model"],
+                "X-Generation-Time": str(video_data["generation_time"]),
+            },
+        )
+
+    except ValidationError as e:
+        logger.warning(f"Validation error in image-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "validation_error",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except ModelNotFoundError as e:
+        logger.warning(f"Model not found in image-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "model_not_found",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except FileSizeError as e:
+        logger.warning(f"File size error in image-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "error": "file_size_error",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except HuggingFaceAPIError as e:
+        logger.error(f"HuggingFace API error in image-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "huggingface_api_error",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except ProcessingError as e:
+        logger.error(f"Processing error in image-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "processing_error",
+                "message": str(e),
+                "details": e.details,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in image-to-video: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "internal_server_error",
+                "message": "An unexpected error occurred",
+            },
+        )
