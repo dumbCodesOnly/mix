@@ -11,6 +11,8 @@ import os
 
 from typing import Any, Optional
 
+from app.schemas.validation import LLMRequestMessage
+
 from huggingface_hub import InferenceClient
 
 from app.utils.config import Config
@@ -358,6 +360,74 @@ class HuggingFaceClient:
             logger.error(f"Error converting speech to text with model {model}: {str(e)}")
             raise HuggingFaceAPIError(f"Failed to convert speech to text: {str(e)}")
     
+    @retry()
+    def chat_completion(
+        self,
+        messages: list[LLMRequestMessage],
+        model: str = Config.DEFAULT_LLM_MODEL,
+        max_new_tokens: int = 256,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+        top_k: int = 50,
+    ) -> str:
+        """
+        logger.debug(f"Entering chat_completion with model: {model}")
+        Generate text from a list of messages (chat format).
+
+        Args:
+            messages: List of messages in the chat
+            model: Model to use for generation
+            max_new_tokens: Maximum number of tokens to generate
+            temperature: Sampling temperature
+            top_p: Nucleus sampling parameter
+            top_k: Top-k sampling parameter
+
+        Returns:
+            str: Generated text
+
+        Raises:
+            HuggingFaceAPIError: If the API call fails
+            TimeoutError: If the request times out
+        """
+        try:
+            # Prepare the payload for logging
+            payload = {
+                "model": model,
+                "messages": [msg.model_dump() for msg in messages],
+                "max_new_tokens": max_new_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+                "top_k": top_k,
+            }
+            
+            logger.debug(f"Sending LLM payload to HF: {payload}")
+            
+            logger.info(
+                f"Generating chat completion with model {model}",
+                extra={"model": model, "last_message": messages[-1].content[:100]}
+            )
+
+            # NOTE: InferenceClient.text_generation supports a list of messages for chat models
+            result = self.client.text_generation(
+                messages=messages,
+                model=model,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+            )
+
+            logger.debug(f"Exiting chat_completion successfully with model {model}")
+            return result
+
+        except TimeoutError as e:
+            logger.error(f"Timeout generating chat completion with model {model}: {str(e)}")
+            raise TimeoutError(f"Chat completion timed out: {str(e)}", Config.REQUEST_TIMEOUT)
+
+        except Exception as e:
+            logger.error(f"Error generating chat completion with model {model}: {str(e)}")
+            raise HuggingFaceAPIError(f"Failed to generate chat completion: {str(e)}")
+
     @retry()
     def text_generation(
         self,
