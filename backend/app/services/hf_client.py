@@ -5,7 +5,11 @@ This module provides a centralized interface to the HuggingFace Inference API,
 with support for retry logic, model fallback, and comprehensive error handling.
 """
 
+# CRITICAL: Set the HuggingFace inference endpoint BEFORE importing InferenceClient
+# HuggingFace has deprecated api-inference.huggingface.co and now requires router.huggingface.co
 import os
+os.environ['HF_INFERENCE_ENDPOINT'] = 'https://router.huggingface.co'
+
 from typing import Any, Optional
 
 from huggingface_hub import InferenceClient
@@ -40,11 +44,8 @@ class HuggingFaceClient:
             raise ValueError("HuggingFace API key is required")
         
         self.api_key = api_key
-        # Use the new router endpoint instead of deprecated api-inference
-        import os
-        os.environ['HF_INFERENCE_API_URL'] = 'https://router.huggingface.co'
         self.client = InferenceClient(token=api_key)
-        logger.info("HuggingFace client initialized successfully with router endpoint")
+        logger.info(f"HuggingFace client initialized with endpoint: {os.environ.get('HF_INFERENCE_ENDPOINT')}")
     
     @retry()
     def text_to_image(
@@ -386,7 +387,7 @@ class HuggingFaceClient:
         
         Args:
             text: Text to embed
-            model: Model to use for embedding
+            model: Model to use for embeddings
             
         Returns:
             list[float]: Embedding vector
@@ -418,7 +419,7 @@ class HuggingFaceClient:
             raise HuggingFaceAPIError(f"Failed to generate embeddings: {str(e)}")
 
 
-# Global client instance
+# Global service instance
 _hf_client: Optional[HuggingFaceClient] = None
 
 
