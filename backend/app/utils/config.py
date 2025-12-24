@@ -58,7 +58,7 @@ class Config:
     DEFAULT_STT_MODEL: str = os.getenv("DEFAULT_STT_MODEL", "openai/whisper-base")
     DEFAULT_IMAGE_MODEL: str = os.getenv("DEFAULT_IMAGE_MODEL", "stabilityai/stable-diffusion-3-medium")
     DEFAULT_IMAGE_EDIT_MODEL: str = os.getenv("DEFAULT_IMAGE_EDIT_MODEL", "stabilityai/stable-diffusion-xl-inpainting")
-    DEFAULT_LLM_MODEL: str = os.getenv("DEFAULT_LLM_MODEL", "meta-llama/Llama-2-7b-chat-hf")
+    DEFAULT_LLM_MODEL: str = os.getenv("DEFAULT_LLM_MODEL", "mistralai/Mistral-7B-Instruct-v0.1")
     DEFAULT_EMBEDDING_MODEL: str = os.getenv("DEFAULT_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     
     # Fallback Models
@@ -86,8 +86,8 @@ class Config:
     
     LLM_FALLBACK_MODELS: list[str] = [
         "mistralai/Mistral-7B-Instruct-v0.1",
-        "tiiuae/falcon-7b-instruct",
-        "meta-llama/Llama-2-7b-chat-hf"
+        "HuggingFaceH4/zephyr-7b-beta",
+        "tiiuae/falcon-7b-instruct"
     ]
     
     EMBEDDING_FALLBACK_MODELS: list[str] = [
