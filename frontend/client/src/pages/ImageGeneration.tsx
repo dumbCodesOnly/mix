@@ -12,7 +12,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { apiClient, downloadBlob } from '@/lib/api';
 
 const models = [
-  { value: 'stabilityai/stable-diffusion-3-medium', label: 'Stable Diffusion 3 Medium' },
+  { value: 'stabilityai/stable-diffusion-3.5-large', label: 'Stable Diffusion 3.5 Large' },
   { value: 'black-forest-labs/FLUX.1-dev', label: 'FLUX.1 Dev' },
   { value: 'runwayml/stable-diffusion-v1-5', label: 'Stable Diffusion v1.5' },
 ];
