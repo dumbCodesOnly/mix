@@ -359,6 +359,61 @@ class HuggingFaceClient:
             raise HuggingFaceAPIError(f"Failed to convert speech to text: {str(e)}")
     
     @retry()
+    def text_generation(
+        self,
+        prompt: str,
+        model: str = Config.DEFAULT_LLM_MODEL,
+        max_new_tokens: int = 256,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+        top_k: int = 50,
+    ) -> str:
+        """
+        logger.debug(f"Entering text_generation with model: {model}")
+        Generate text from a prompt.
+
+        Args:
+            prompt: Text prompt for generation
+            model: Model to use for generation
+            max_new_tokens: Maximum number of tokens to generate
+            temperature: Sampling temperature
+            top_p: Nucleus sampling parameter
+            top_k: Top-k sampling parameter
+
+        Returns:
+            str: Generated text
+
+        Raises:
+            HuggingFaceAPIError: If the API call fails
+            TimeoutError: If the request times out
+        """
+        try:
+            logger.info(
+                f"Generating text with model {model}",
+                extra={"prompt": prompt[:100], "model": model}
+            )
+
+            result = self.client.text_generation(
+                prompt=prompt,
+                model=model,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+            )
+
+            logger.debug(f"Exiting text_generation successfully with model {model}")
+            return result
+
+        except TimeoutError as e:
+            logger.error(f"Timeout generating text with model {model}: {str(e)}")
+            raise TimeoutError(f"Text generation timed out: {str(e)}", Config.REQUEST_TIMEOUT)
+
+        except Exception as e:
+            logger.error(f"Error generating text with model {model}: {str(e)}")
+            raise HuggingFaceAPIError(f"Failed to generate text: {str(e)}")
+
+    @retry()
     def text_to_video(
         self,
         prompt: str,
