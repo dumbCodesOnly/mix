@@ -33,7 +33,6 @@ COPY --from=builder /root/.local /root/.local
 
 # Copy application code
 COPY app/ ./app/
-COPY .env.example .env
 
 # Set environment variables
 ENV PATH=/root/.local/bin:$PATH \
