@@ -56,7 +56,7 @@ class Config:
     # Model Configuration
     DEFAULT_TTS_MODEL: str = os.getenv("DEFAULT_TTS_MODEL", "hexgrad/Kokoro-82M")
     DEFAULT_STT_MODEL: str = os.getenv("DEFAULT_STT_MODEL", "openai/whisper-large-v3-turbo")
-    DEFAULT_IMAGE_MODEL: str = os.getenv("DEFAULT_IMAGE_MODEL", "stabilityai/stable-diffusion-3-medium")
+    DEFAULT_IMAGE_MODEL: str = os.getenv("DEFAULT_IMAGE_MODEL", "stabilityai/stable-diffusion-3.5-large")
     DEFAULT_IMAGE_EDIT_MODEL: str = os.getenv("DEFAULT_IMAGE_EDIT_MODEL", "stabilityai/stable-diffusion-xl-inpainting")
     DEFAULT_LLM_MODEL: str = os.getenv("DEFAULT_LLM_MODEL", "meta-llama/Llama-3.1-8B-Instruct")
     DEFAULT_EMBEDDING_MODEL: str = os.getenv("DEFAULT_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
@@ -79,7 +79,7 @@ class Config:
     
     IMAGE_FALLBACK_MODELS: list[str] = [
         "black-forest-labs/FLUX.1-dev",
-        "stabilityai/stable-diffusion-3.5-medium",
+        "stabilityai/stable-diffusion-3-medium",
         "stabilityai/stable-diffusion-xl-base-1.0"
     ]
     
